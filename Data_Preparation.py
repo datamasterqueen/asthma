@@ -41,8 +41,31 @@ df.head()
 #- Print the shape of df and its columns. Note: `.shape` and `.columns` are attributes, not methods, so you don't need to follow these with parentheses ().
 #- Print the `.info()` of the df
 
-df.shape
-df.columns
-df.info()
+#Print the shape of df
+print(df.shape)
+#Print the columns of df
+print(df.columns)
+#Print the info of df
+print(df.info())
 
+## 2. Dropping columns
+
+#If a DataFrame contains columns that are not useful to your analysis, such columns should be dropped from the DataFrame, 
+#to make it easier for you to focus on the remaining columns.
+
+### Instructions
+
+#- Examine the DataFrame's `.shape` to find out the number of rows and columns.
+#- Drop 'Unnamed: 0' and 'race' and columns by passing the column names to the `.drop()` method as a list of strings.
+#- Examine the `.shape` again to verify that there are now two fewer columns.
+
+
+#Examine the shape of the DataFrame
+print(df.shape)
+
+#drop the columns
+df.drop(['Unnamed: 0','race'], axis='columns', inplace=True)
+
+#Examine the shape of the DataFrame (again)
+print(df.shape)
 
