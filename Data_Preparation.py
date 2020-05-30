@@ -78,14 +78,6 @@ print(df.shape)
 #During this course, the weight and height column will be critical to many of your analyses. 
 #Because only a small fraction of rows are missing, we'll drop those rows from the dataset.
 
-## 3. Dropping rows
-
-#When you know that a specific column will be critical to your analysis, and only a small fraction of rows are missing a value
-#in that column, it often makes sense to remove those rows from the dataset.
-
-#During this course, the weight and height column will be critical to many of your analyses. 
-#Because only a small fraction of rows are missing, we'll drop those rows from the dataset.
-
 ### Instructions
 
 #- Count the number of missing values in each column.
@@ -109,3 +101,5 @@ df.shape
 
 #- Check the current data type of `df`.
 #- Convert hosp_num to an integer
+
+
