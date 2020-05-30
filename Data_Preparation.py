@@ -69,3 +69,43 @@ df.drop(['Unnamed: 0','race'], axis='columns', inplace=True)
 #Examine the shape of the DataFrame (again)
 print(df.shape)
 
+
+## 3. Dropping rows
+
+#When you know that a specific column will be critical to your analysis, and only a small fraction of rows are missing 
+#a value in that column, it often makes sense to remove those rows from the dataset.
+
+#During this course, the weight and height column will be critical to many of your analyses. 
+#Because only a small fraction of rows are missing, we'll drop those rows from the dataset.
+
+## 3. Dropping rows
+
+#When you know that a specific column will be critical to your analysis, and only a small fraction of rows are missing a value
+#in that column, it often makes sense to remove those rows from the dataset.
+
+#During this course, the weight and height column will be critical to many of your analyses. 
+#Because only a small fraction of rows are missing, we'll drop those rows from the dataset.
+
+### Instructions
+
+#- Count the number of missing values in each column.
+#- Drop all rows that are missing weight or hieght by passing the column name to the subset parameter of `.dropna()`.
+#- Count the number of missing values in each column again, to verify that none of the remaining rows are missing weight or height.
+#- Examine the DataFrame's `.shape` to see how many rows and columns remain.
+
+#count the number of missing values in each column 
+print(df.isnull().sum())
+
+# Drop all rows that are missing weight or height
+df.dropna(subset=['weight','height'], inplace=True)
+
+df.shape
+
+## 4. Checking data types
+
+#Explore the DataFrame to determine which column's data type should be changed.
+
+### Instructions
+
+#- Check the current data type of `df`.
+#- Convert hosp_num to an integer
