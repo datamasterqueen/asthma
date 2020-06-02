@@ -160,7 +160,72 @@ df_height.height.hist(bins=40, log=True)
 df_height.height.mean()
 #The units are in inches.
 
+# Step 8. Calculate BMI
+
+## Instructions
+
+#- Print the shape of df_weight and df_height using 
+#- String format technique "Shape for df_weight is {} and df_height is {}".format()
+#- Merge `df_weight` and `df_height` into a new dataframe `df_wh`
+#- Use an inner join using the `how` parameter set to `inner`
+#- and the `on` parameter set to the `encounter_id` field
+#- print the shape of the merged dataframe `df_wh`. 
+#- How is BMI calculated? BMI is calculated the same way for both adults and children. 
+#- The calculation is based on the formulas here: [Calculate BMI](https://www.cdc.gov/healthyweight/assessing/bmi/adult_bmi/index.html#Interpreted). 
+#(https://www.cdc.gov/healthyweight/assessing/bmi/adult_bmi/index.html).
+#- Create a new column `height_m` with the height converted to meters
+#- Calculate patient's BMI at the time of each encounter, and create a new column `bmi` in `df_wh` to store the values. Remember to be consistent with measurement Units. Use either kilograms and meters (or centimeters) or pounds and inches.
+#- Generate descriptive statistics of `bmi`. 
+
+## Solutions
+print("Shape for df_weight is {} and df_height is {}".format(df_weight.shape, df_height.shape))
+df_wh = pd.merge(df_weight, df_height, on='encounter_id', how='inner')
+df_wh.shape
+
+df_wh['height_m']=df_wh['height']/39.37
+df_wh['bmi']=df_wh['weight']/(df_wh['height_m']**2)
+df_wh['bmi'].describe()
+
+# Step 9: BMI data exploratory analysis
+
+## Instructions
+
+#- Create a histogram of `bmi` on the df_wh dataframe
+#- Use the log set to True 
+#- How many patients have a BMI greater than 100
+#- Filter out bmi measurements greater than 100 
+#- Recreate the histogram 
+
+## Solutions
+df_wh.bmi.hist(log=True)
+df_wh[df_wh.bmi >100].osler_id_x.count()
+df_wh[df_wh.bmi <100].bmi.hist(log=True)
 
 
+# Step 10. Create bmi categories
 
+## Instructions
+
+#- create a new category on `df_wh` called `bmi_cat`
+#- with the categories in the below table
+#- create a horizontal bar chart with the number of measurements in each category
+
+#| name | bmi value range |
+#| --- | -- |
+#|1. not overweight or obese| <= 25|
+#|2. overweight|25 < x <= 30|
+#|3. class 1 obese|30 < x <= 35|
+#|4. class 2 obese|35 < x <= 40|
+#|5. class 3 obese|40 < x|
+
+## Solutions
+# Create Categories
+df_wh['bmi_cat']= pd.cut(df_wh.bmi, [-np.inf,25,30,35,40,np.inf],  \
+                         labels=["1. not overweight or obese","2. overweight",
+                                 "3. class 1 obese","4. class 2 obese","5. class 3 obese"])
+df_wh.bmi_cat.value_counts()
+# Create Bar Chart
+df_wh.groupby('bmi_cat').bmi.count().plot(kind='barh')
+plt.xlabel('Number of Measurements')
+plt.ylabel('BMI Categories')
 
