@@ -160,8 +160,33 @@ male_and_hospitalized.head()
 #- Group by gender to calculate the hospitalization rate for both groups simultaneously. (It should match the previous results.)
 
 #Solutions
+# Calculate the hospitalization rate for female
 df.loc[(df['gender'] == 'Female')].is_hosp.mean()
-
+# Calculate the hospitalization rate for male
 df.loc[(df['gender'] == 'Male')].is_hosp.mean()
-
+# Calculate the search rate for both groups simultaneously
 df.groupby('gender').is_hosp.agg('mean')
+
+## 9. Adding a second factor to the analysis
+
+#ICS(inhaled corticosteriods), OCS(oral corticosteriods) and SABA(short-acting beta2 agonists)
+#are medications that are usually prescribed for patients who experience Asthma exacerbation.
+
+#The hospitalization rate for females is much higher than for males, it's possible that the difference is mostly due to a second factor.
+# You might hypothesize that the hospitalization rates varies by certain medication being prescribed or not. 
+# You can test this hypothesis by examining the hospitalization rate for each combination of gender and violation.
+
+### Instructions
+#- Use a `groupby()` to calculate the hospitalization for each combination of gender and medication. 
+# Is the hospitialization rate always higher for females than males?
+
+#Solutions
+# Calculate hospitalization by ocs and gender
+df.groupby(['ocs', 'gender']).is_hosp.mean()
+# Calculate hospitalization by ics and gender
+df.groupby(['ics', 'gender']).is_hosp.mean()
+# Calculate hospitalization by saba and gender
+df.groupby(['saba', 'gender']).is_hosp.mean()
+
+
+
