@@ -177,5 +177,131 @@ df.loc[mask_saba,'saba']=1
 df[['ocs','ics','saba']].sum()==[7065,16475,26951]
 
 
+# Step 4 Number of exacerbations 
 
+## Instructions
+
+#- create a new integer column in `df_med` called `exacer` for the number of exacerbations
+#- assign the field to 1 if the pharmaceutical_class is equal to GLUCOCORTICOIDS
+#- create a new dataframe `df_ocs` including the `osler_id` and `exacer` columns from `df_med`
+#- and grouping by `osler_id` summing the exacerbations for each patient
+#- reset the index for `df_ocs` so `osler_id` is a column and not the index 
+#- bring `df_ocs` into `df` by using pd.merge 
+#- `left` join `df_ocs` with `df` so that the `df_ocs` columns come after the `df` columns
+#- becasuse we did a left join there may be patients without any medications that result in a null for exacer
+#- replace null values for exacer with 0
+#- create a new field `exacer_lvl` which bins the number of exacerbations into 4 groups (0,1-2,3-4,5+)
+#- bins=[-np.inf,0,2,4,np.inf]
+
+df_med['exacer'] = 0
+df_med.loc[df_med['pharmaceutical_class']=='GLUCOCORTICOIDS','exacer'] = 1
+df_ocs = df_med.loc[:,['osler_id','exacer']]
+df_ocs = df_ocs.groupby('osler_id').exacer.sum().sort_values(ascending=False)
+df_ocs = df_ocs.to_frame().reset_index()
+df = pd.merge(df , df_ocs, on='osler_id', how='left')
+df=df.fillna({'exacer':0})
+df = df.astype({'exacer':'int64'})
+df['exacer_lvl']= pd.cut(df.exacer, [-np.inf,0,2,4,np.inf], \
+                        labels=["0","1-2","3-4","5+"])
+df.exacer_lvl.value_counts()
+
+#Verify
+list(df.columns)==['osler_id', 'date_of_birth', 'gender', 'race', 'ethnicity', 'age',
+       'age_cat', 'ocs','ics','saba','exacer', 'exacer_lvl'] #True
+df.exacer.max()==46 #True
+df.exacer.isnull().sum()==0 #True
+df.exacer.sum()==13292 #True
+df.exacer_lvl.value_counts()==[53611,5901,696,468] #True
+
+
+# Step 5. Number of Hospitalizations related to Asthma
+
+## Instructions
+
+#- We want to find all the hospital encounters where the symptoms for those encounters include the following reasons
+#- load all encounters with a hospital encounter
+#- load all symptoms with the included ICD10 codes
+#- join the tables (Use SQL or Pandas for the previous steps)
+#- group by patient and count the number of unique encounters
+#- create a column on `df` called `hosp_num` with the number of hospitalizations (Null values should zero)
+#- create a column on `df` called `is_hosp` as a True/False for hospitalization
+
+#| ICD 10 code | definition |
+#|--|--|
+#| J45.51 ||
+#| J45.52 ||
+#| J45.901 ||
+
+query="SELECT * FROM encounters where encounter_type IN ('Hospital Encounter') "
+df_enc = pd.read_sql_query(query, engine)
+df_enc.head(1)
+
+query="SELECT * FROM symptoms where diagnosis_code_icd10 IN ('J45.51','J45.52','J45.901')"
+df_sym = pd.read_sql_query(query, engine)
+df_sym.head(1)
+
+df_encsym = pd.merge(df_enc , df_sym, on='encounter_id', how='inner')
+
+srs_hosp = df_encsym.groupby('osler_id_x').encounter_id.nunique()
+
+srs_hosp
+
+df_encsym2 = df_encsym.groupby('osler_id_x').encounter_id.nunique()
+
+df_encsym2 = df_encsym2.to_frame().reset_index()
+
+df_encsym2 = df_encsym2.rename(columns={"osler_id_x":"osler_id","encounter_id":"hosp_num"})
+
+df_encsym2.head(1)
+
+df = pd.merge(df , df_encsym2, on='osler_id', how='left')
+
+df.head(1)
+
+df=df.fillna({'hosp_num':0})
+
+df = df.astype({'hosp_num':'int64'})
+
+mask = df['hosp_num'] > 0
+
+df['is_hosp'] = 0
+
+df.loc[mask, 'is_hosp'] = 1
+
+df.head(1)
+
+#Verify
+len(srs_hosp)==976 #True
+srs_hosp.max()==15 #True
+df.isnull().sum().sum()==0 #True
+df.hosp_num.sum()==1421 #True
+round(df.is_hosp.mean(),3)==0.016 #True
+
+
+# Step 6: Height, weight and bmi
+
+#Greenblatt- 
+#BMI. Body Mass Index (BMI) was calculated using an average of height and weight measurements, after eliminating values that fell outside 5% of the patient’s median height measurement and 10% of the patient’s median weight measurement. 
+#BMI was classified into 5 categories: not overweight or obese (<25.0 kg/m2), overweight (25.0 to <30.0 kg/m2), class 1 obese (30.0 to <35.0 kg/m2), class 2 obese (35.0 to <40.0 kg/m2) and class 3 obese (>40.0 kg/m2). 
+
+## Instructions
+#- load vitals_weight into a dataframe `df_weight`
+#- load vitals_height into a dataframe `df_height`
+#- Calculate for each patient the average height after filtering out the top and bottom 5%
+#- Calculate for each patient the average weight after filtering out the top and bottom 10%
+#- Create a column in `df` called `height` for the patients height in meters (0.0254 m/inch)
+#- Create a column in `df` called `weight` for the patients weight in kilograms
+#- Create a column in `df` called `bmi` for the weight divided by the square of the height
+#- Create a column in `df` called `bmi_cat` for the categories of BMI
+#- Use `bins=[-np.inf,25,30,35,40,np.inf]`
+
+#| BMI Cat | Description |
+#|--|--|
+#| not overweight or obese | (<25.0 kg/m2)|
+#| overweight | (25.0 to <30.0 kg/m2)|
+#| class 1 obese | (30.0 to <35.0 kg/m2)| 
+#| class 2 obese |(35.0 to <40.0 kg/m2) |
+#| class 3 obese | (>40.0 kg/m2)|
+
+#- use this function to calculate the average height and weight
 
