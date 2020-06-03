@@ -45,5 +45,30 @@
 #Regional Council supported this inference, stating that proper management
 #could potentially save at least 25 percent of total asthma costs, or 5 billion,
 #nationally by reducing health care costs (American Lung Association 2009).
-#Another initiative, the Children's Health Fund's Childhood Asthma Initiative, examined patients enrolled in an asthma intervention program. Results illustrated that treatment that aligned with clinical guidelines reduced the severity of symptoms experienced, as well as asthma-related events (eg, hospitalizations, emergency room visits, etc.) (Columbia University 2010). Additionally, subsequent savings attributed to improved clinical outcomes totaled to nearly 4.2 million or 4,525 per patient. This translated to a
-#significant reduction in federally subsidized and private insurance-based costs for this population (Columbia University 2010).
+#Another initiative, the Children's Health Fund's Childhood Asthma Initiative, examined patients enrolled in an asthma 
+#intervention program. Results illustrated that treatment that aligned with clinical guidelines reduced the severity of symptoms 
+#experienced, as well as asthma-related events (eg, hospitalizations, emergency room visits, etc.) (Columbia University 2010). 
+#Additionally, subsequent savings attributed to improved clinical outcomes totaled to nearly 4.2 million or 4,525 per patient. 
+#This translated to a significant reduction in federally subsidized and private insurance-based costs for this population (Columbia University 2010).
+
+# Step 1. Load Libraries and Create an encrypted authentication token
+## Instructions
+#- load the pandas library and assign it to an alias of `pd`
+#- load the numpy library and assign it the alias of `np`
+#- import the getpass library
+#- import the Authentication module from the SciServer library
+#- import myUserName from the SciServer getKeystoneUseerWithToken function
+#- use getpass to store your password as an encrypted variable `passwd`
+#- assign your username to the variable `user` and add an `win\\` prefix
+
+## Solutions
+
+import pandas as pd
+import numpy as np
+import getpass
+from SciServer import Authentication
+
+myUserName = Authentication.getKeystoneUserWithToken(Authentication.getToken()).userName
+passwd = getpass.getpass('Password for ' + myUserName + ': ')
+user = "win\\" + myUserName
+
