@@ -75,14 +75,93 @@ user = "win\\" + myUserName
 # Step 2. Connect to the PMAP Database
 
 ## Instructions
-- import the sqlalchemy library
-- import the urllib.parse library
-- set the host_ip = `ESMPMDBPR4.WIN.AD.JHU.EDU`
-- set the database name = `CAMP_PMCoe_Projection`
-- set the database port to `1433`
-- set the driver to `FreeTDS`
-- set the tds_ver= to `8.0
-- add the username and password from previous step
-- call sqlalchemy to create a database connection variable called `engine`
+#- import the sqlalchemy library
+#- import the urllib.parse library
+#- set the host_ip = `ESMPMDBPR4.WIN.AD.JHU.EDU`
+#- set the database name = `CAMP_PMCoe_Projection`
+#- set the database port to `1433`
+#- set the driver to `FreeTDS`
+#- set the tds_ver= to `8.0
+#- add the username and password from previous step
+#- call sqlalchemy to create a database connection variable called `engine`
+
+# Step 2. Connect to the PMAP Database
+
+import sqlalchemy
+import urllib.parse
+#SQL Driver
+driver="FreeTDS"
+tds_ver="8.0"
+# Database
+host_ip="ESMPMDBPR4.WIN.AD.JHU.EDU" # Update this accordingly
+db_port="1433"
+db="CAMP_PMCoe_Projection" # Update this accordingly
+# Create Connection String
+conn_str=("DRIVER={};Server={};PORT={};DATABASE={};UID={};PWD={};TDS_VERSION={}"
+.format(driver, host_ip, db_port, db, user, passwd, tds_ver)
+)
+# Create Engine
+engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect=' +
+urllib.parse.quote(conn_str)
+)
+
+# Step 3. Test your database connection
+
+## Instructions
+#- query patients table for the top 5 records
+#- save the database query to a dataframe variable `df`
+#- print the first 5 records of `df`
+
+## Solutions
+query="SELECT TOP 5 * FROM patients"
+df = pd.read_sql_query(query, engine)
+df.head()
+
+# Step 4. Load your datasets
+## Instructions
+
+#- load the symptoms, encounters, and patients table
+#- drop osler_id from symptoms
+#- join the tables and save the data into a data frame `df`
+#- beware of what you are joining the tables on (osler_id or encounter_id)
+#- ensure the length of `df` is 1,967,436
+#- Test the equivalence of your columns against the variable `col_names`. It should return true
+## Solution
+query="SELECT * FROM symptoms"
+df_sym = pd.read_sql_query(query, engine)
+df_sym.head()
+
+df_sym = df_sym.drop(columns=['osler_id'])
+df_sym.head()
+
+query="SELECT * FROM encounters"
+df_enc = pd.read_sql_query(query, engine)
+df_enc.head()
+
+query="SELECT * FROM patients"
+df_pat = pd.read_sql_query(query, engine)
+df_pat.head()
+
+df_sym.shape
+df_enc.shape
+df_pat.shape
+
+df = pd.merge(df_enc , df_sym, on='encounter_id', how='inner')
+df.shape
+df = pd.merge(df, df_pat, on='osler_id', how='inner')
+df.shape
+df.head()
+
+#Verify
+col_names=['osler_id','encounter_id', 'encounter_type',\
+           'encounter_date','diagnosis_code_icd10', \
+           'diagnosis_code_icd9','diagnosis_name', \
+           'date_of_birth', 'gender', 'race','ethnicity']
+list(df.columns)==col_names
+
+len(df)==1967436
+
+
+
 
 
