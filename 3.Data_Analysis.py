@@ -66,3 +66,116 @@
 #|acute_bronchitist| does the patient have a diagnosis for Acute Bronchitis  |
 #|cystic_fibrosis| does the patient have a diagnosis for Cystic Fibrosis  |
 #|duration| duration in days between earliest and latest encounter|
+
+# Import Libraries & connect to DB
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+%matplotlib inline
+import seaborn as sns
+
+import getpass
+from SciServer import Authentication
+
+myUserName = Authentication.getKeystoneUserWithToken(Authentication.getToken()).userName
+passwd = getpass.getpass('Password for ' + myUserName + ': ')
+user = "win\\" + myUserName
+
+import sqlalchemy
+import urllib.parse
+#SQL Driver
+driver="FreeTDS"
+tds_ver="8.0"
+# Database
+host_ip="ESMPMDBPR4.WIN.AD.JHU.EDU" # Update this accordingly
+db_port="1433"
+db="CAMP_PMCoe_Projection" # Update this accordingly
+# Create Connection String
+conn_str=("DRIVER={};Server={};PORT={};DATABASE={};UID={};PWD={};TDS_VERSION={}"
+.format(driver, host_ip, db_port, db, user, passwd, tds_ver))
+# Create Engine
+engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect=' +
+urllib.parse.quote(conn_str))
+
+# Step 1. Create a dataframe for Patients Table
+
+## Instructions
+#- create a dataframe `df` of all the records in the `patients` table
+
+query="SELECT * FROM patients"
+df = pd.read_sql_query(query, engine)
+
+len(df)==60676
+
+
+# Step 2. Calculate age and age category
+
+#The data spans 3 years. Ages for the same patient will vary. 
+#You consulted with the researchers and they would like you measure it from a arbitrary time from date of birth.  
+#Subtract the date of birth from the year 2018 since that is the latest date of the data.
+
+## Instructions
+
+#- create a new column to the df dataframe `age` 
+#- subtract the year of the date of birth from the year 2018 to get float
+#- create a new column `age_cat` into the following groups
+#- <18,18-30,31-40,41-50,51-60,61-70,71-80,81-90,91-100,100+
+#- using bins=[-np.inf,18,30,40,50,60,70,80,90,100,np.inf]
+
+df['age']=2018-df.date_of_birth.dt.year
+df['age_cat']= pd.cut(df.age, [-np.inf,18,30,40,50,60,70,80,90,100,np.inf], \
+                        labels=["<18","18-30","31-40","41-50","51-60","61-70","71-80","81-90","91-100","100+"])
+df.age.head()
+df.age_cat.value_counts()
+
+#Verify
+df.age.head()==[5,3,41,48,16]
+round(df.age.mean(),2)==37.07
+df.age_cat.value_counts()==[17651,9135,7857,7326,7057,6529,3673,1237,209,2]
+
+# Step 3. Medications check
+
+## Instructions 
+
+#- create a dataframe `df_med` of the meds database
+#- create `pts_ocs`,`pts_ics`,`pts_saba` with lists of patient_ids if they take the medication using pharmaceutical_class matching
+
+#|medication| string match|
+#|--|--|
+#|OCS|GLUCOCORTICOIDS|
+#|ICS|r'CORT.+INH'|
+#|SABA|r'BETA.+INH.+SHORT'|
+
+#- create new columns for df `ocs`,`ics`,`saba`
+#- make the columns True if the patient is taking the respective medication
+
+query="SELECT * FROM meds"
+df_med = pd.read_sql_query(query, engine)
+
+meds_ocs = df_med[df_med.loc[:,'pharmaceutical_class']=='GLUCOCORTICOIDS']
+meds_ics = df_med[df_med.loc[:,'pharmaceutical_class'].str.contains(r'CORT.+INH', regex=True)]
+meds_saba = df_med[df_med.loc[:,'pharmaceutical_class'].str.contains(r'BETA.+INH.+SHORT', regex=True)]
+
+pts_ocs = meds_ocs.osler_id.unique()
+pts_ics = meds_ics.osler_id.unique()
+pts_saba = meds_saba.osler_id.unique()
+
+df['ocs'] = 0
+df['ics'] = 0 
+df['saba'] = 0
+
+mask_ocs=df.osler_id.isin(pts_ocs)
+mask_ics=df.osler_id.isin(pts_ics)
+mask_saba=df.osler_id.isin(pts_saba)
+
+df.loc[mask_ocs,'ocs']=1
+df.loc[mask_ics,'ics']=1
+df.loc[mask_saba,'saba']=1
+
+#Verify
+df[['ocs','ics','saba']].sum()==[7065,16475,26951]
+
+
+
+
