@@ -72,3 +72,17 @@ myUserName = Authentication.getKeystoneUserWithToken(Authentication.getToken()).
 passwd = getpass.getpass('Password for ' + myUserName + ': ')
 user = "win\\" + myUserName
 
+# Step 2. Connect to the PMAP Database
+
+## Instructions
+- import the sqlalchemy library
+- import the urllib.parse library
+- set the host_ip = `ESMPMDBPR4.WIN.AD.JHU.EDU`
+- set the database name = `CAMP_PMCoe_Projection`
+- set the database port to `1433`
+- set the driver to `FreeTDS`
+- set the tds_ver= to `8.0
+- add the username and password from previous step
+- call sqlalchemy to create a database connection variable called `engine`
+
+
