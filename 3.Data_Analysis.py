@@ -305,3 +305,148 @@ round(df.is_hosp.mean(),3)==0.016 #True
 
 #- use this function to calculate the average height and weight
 
+def filtered_avg(series,quant):
+    lower_quant=np.quantile(series,quant/100)
+    upper_quant=np.quantile(series,1-quant/100)
+    return series[(series>lower_quant)&(series<upper_quant)].mean()
+  
+#Height
+query="SELECT * FROM vitals_height"
+df_height = pd.read_sql_query(query, engine)
+
+df_height.height = pd.to_numeric(df_height.height)
+
+srs_height = df_height.groupby('osler_id')\
+.height.apply(filtered_avg, quant=5)
+
+df.set_index('osler_id', inplace=True)
+
+df['height']= srs_height*0.0254
+
+df.head(1)
+
+#Weight
+query="SELECT * FROM vitals_weight"
+df_weight = pd.read_sql_query(query, engine)
+
+df_weight.weight = pd.to_numeric(df_weight.weight)
+
+srs_weight = df_weight.groupby('osler_id')\
+.weight.apply(filtered_avg, quant=10)
+
+df['weight']= srs_weight
+
+df.head(1)
+
+df.reset_index(inplace=True)
+
+#BMI
+
+df['bmi']=df['weight']/(df['height']**2)
+
+df.bmi.mean()
+
+df['bmi_cat']= pd.cut(df.bmi, [-np.inf,25,30,35,40,np.inf], \
+                      labels=["1. not overweight or obese","2. overweight","3. class 1 obese","4. class 2 obese","5. class 3 obese"])
+
+(df.bmi_cat=='2. overweight').sum()
+
+#Verify
+round(df.height.max(),2)==2.08 #True
+
+round(df.weight.median(),2)==74.32 #True
+
+round(df.height.median(),2)==1.58 #True
+
+round(df.weight.mean(),2)==73.27 #True
+
+round(df.bmi.mean(),2)==25.54 #True
+
+(df.bmi_cat=='2. overweight').sum()==2638 #True
+
+# Step 7: Co-morbidities 
+#- install the hcuppy library using `!pip install hcuppy`
+#- Algorithm for elix codes
+#- group problem list by osler id
+#- send series of icd10 codes to custom function
+#- convert to ta list of elixhauser terms
+#- add the list of terms to a column in pats
+#- get a list of all the terms
+#- add columns in pats for each term
+#- fill in columns with boolean
+
+!pip install hcuppy
+
+import json
+from hcuppy.elixhauser import ElixhauserEngine
+ee=ElixhauserEngine()
+
+query = "select * from problemlist"
+df_prob=pd.read_sql_query(query, engine)
+df_prob=df_prob[df_prob.osler_id.isin(df.osler_id)]
+
+def get_dx_list(dx_series):
+    output=[]
+    results=ee.get_elixhauser(dx_series.tolist())
+    if len(results['cmrbdt_lst'])>0:
+        output=results['cmrbdt_lst']
+    return output
+
+srs_prob=df_prob.groupby('osler_id')\
+.diagnosis_code_icd10.apply(get_dx_list)
+
+df_prob = srs_prob.to_frame().reset_index()
+
+df_prob = df_prob.rename(columns={"diagnosis_code_icd10":"elix"})
+
+df_prob.elix.explode()
+
+set(df_prob.elix.explode())
+
+for elix_name in set(df_prob.elix.explode()):
+    df_prob[elix_name]=False
+    
+df_prob=df_prob.loc[:,'osler_id':'elix']
+
+df_prob.head(1)
+
+df = pd.merge(df , df_prob, on='osler_id', how='left')
+
+for elix_name in set(df.elix.explode()):
+    if elix_name=='NaN':
+        df[elix_name.str.lower]=False
+ 
+for elix_name in set(df.elix.explode()):
+    if str(elix_name)!='nan':
+        df["el_{}".format(elix_name.lower())]=False
+        
+from datetime import datetime
+stime=datetime.now()
+
+for i,row in df.iterrows():
+    if str(row.elix)!='nan':
+        for name in row.elix:
+            df.loc[i,"el_{}".format(name.lower())]=True
+            
+print("Time to complete operation = {} seconds".\
+      format((datetime.now()-stime).total_seconds()))
+
+#Verify
+df.shape[1]==49 #True
+df[df.columns[df.columns.str.contains('el_')]].sum().sum()==130758 #True
+
+# Step 8. add special diagnosis codes for
+
+#- Create boolean fields to state the presence of each of the conditions below
+#- use the global problem list to look for these conditions
+
+#| Diagnosis | ICD 10 Code |
+#| --- | --- |
+#| chronic_bronchitis |J41.0-J41.8 |
+#| sinusitis |J32.0 - J32.9 |
+#| copd | J44.1-.9| 
+#| emphysema | J43-J43.9 |
+#| acute_bronchitis |J20 -J20.9 |
+#| cystic_fibrosis |E84 - E84.9 |
+
+
