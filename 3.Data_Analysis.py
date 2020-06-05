@@ -68,7 +68,6 @@
 #|duration| duration in days between earliest and latest encounter|
 
 # Import Libraries & connect to DB
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -103,9 +102,9 @@ urllib.parse.quote(conn_str))
 ## Instructions
 #- create a dataframe `df` of all the records in the `patients` table
 
+# Create dataframe
 query="SELECT * FROM patients"
 df = pd.read_sql_query(query, engine)
-
 len(df)==60676
 
 # Step 2. Calculate age and age category
@@ -122,13 +121,13 @@ len(df)==60676
 #- <18,18-30,31-40,41-50,51-60,61-70,71-80,81-90,91-100,100+
 #- using bins=[-np.inf,18,30,40,50,60,70,80,90,100,np.inf]
 
+# Create new column and subtract the year 2018
 df['age']=2018-df.date_of_birth.dt.year
+# Create age categories
 df['age_cat']= pd.cut(df.age, [-np.inf,18,30,40,50,60,70,80,90,100,np.inf], \
                         labels=["<18","18-30","31-40","41-50","51-60","61-70","71-80","81-90","91-100","100+"])
-df.age.head()
-df.age_cat.value_counts()
 
-#Verify
+# Verify
 df.age.head()==[5,3,41,48,16]
 round(df.age.mean(),2)==37.07
 df.age_cat.value_counts()==[17651,9135,7857,7326,7057,6529,3673,1237,209,2]
@@ -149,32 +148,37 @@ df.age_cat.value_counts()==[17651,9135,7857,7326,7057,6529,3673,1237,209,2]
 #- create new columns for df `ocs`,`ics`,`saba`
 #- make the columns True if the patient is taking the respective medication
 
+# Create a df 'df_med' of the meds database
 query="SELECT * FROM meds"
 df_med = pd.read_sql_query(query, engine)
 
+# Filter out records that matches the pharmaceutical class string
 meds_ocs = df_med[df_med.loc[:,'pharmaceutical_class']=='GLUCOCORTICOIDS']
 meds_ics = df_med[df_med.loc[:,'pharmaceutical_class'].str.contains(r'CORT.+INH', regex=True)]
 meds_saba = df_med[df_med.loc[:,'pharmaceutical_class'].str.contains(r'BETA.+INH.+SHORT', regex=True)]
 
+# Summarize list of unique patient id
 pts_ocs = meds_ocs.osler_id.unique()
 pts_ics = meds_ics.osler_id.unique()
 pts_saba = meds_saba.osler_id.unique()
 
+# Create fields
 df['ocs'] = 0
 df['ics'] = 0 
 df['saba'] = 0
 
+# Create mask for each medication column
 mask_ocs=df.osler_id.isin(pts_ocs)
 mask_ics=df.osler_id.isin(pts_ics)
 mask_saba=df.osler_id.isin(pts_saba)
 
+# Assign true value
 df.loc[mask_ocs,'ocs']=1
 df.loc[mask_ics,'ics']=1
 df.loc[mask_saba,'saba']=1
 
-#Verify
+# Verify
 df[['ocs','ics','saba']].sum()==[7065,16475,26951]
-
 
 # Step 4 Number of exacerbations 
 
@@ -192,26 +196,36 @@ df[['ocs','ics','saba']].sum()==[7065,16475,26951]
 #- create a new field `exacer_lvl` which bins the number of exacerbations into 4 groups (0,1-2,3-4,5+)
 #- bins=[-np.inf,0,2,4,np.inf]
 
+# Create Exacer Column
 df_med['exacer'] = 0
+
+# Assign exacerbations status
 df_med.loc[df_med['pharmaceutical_class']=='GLUCOCORTICOIDS','exacer'] = 1
+# Create new dataframe with patient id and exacer status
 df_ocs = df_med.loc[:,['osler_id','exacer']]
+# Sum up exacerabation count for each patient
 df_ocs = df_ocs.groupby('osler_id').exacer.sum().sort_values(ascending=False)
+# Reset index so patient id is a column
 df_ocs = df_ocs.to_frame().reset_index()
+# Join count result to main dataframe
 df = pd.merge(df , df_ocs, on='osler_id', how='left')
+# Fill null with exacer
 df=df.fillna({'exacer':0})
+# Change data type of exacerbations column to integer
 df = df.astype({'exacer':'int64'})
+# Categorize exacerbations to 7 groups
 df['exacer_lvl']= pd.cut(df.exacer, [-np.inf,0,2,4,np.inf], \
                         labels=["0","1-2","3-4","5+"])
+# Display counts of exacerbations
 df.exacer_lvl.value_counts()
 
-#Verify
+# Verify
 list(df.columns)==['osler_id', 'date_of_birth', 'gender', 'race', 'ethnicity', 'age',
        'age_cat', 'ocs','ics','saba','exacer', 'exacer_lvl'] #True
 df.exacer.max()==46 #True
 df.exacer.isnull().sum()==0 #True
 df.exacer.sum()==13292 #True
 df.exacer_lvl.value_counts()==[53611,5901,696,468] #True
-
 
 # Step 5. Number of Hospitalizations related to Asthma
 
@@ -231,43 +245,48 @@ df.exacer_lvl.value_counts()==[53611,5901,696,468] #True
 #| J45.52 ||
 #| J45.901 ||
 
+# Load all encounter data into dataframe df_enc
 query="SELECT * FROM encounters where encounter_type IN ('Hospital Encounter') "
 df_enc = pd.read_sql_query(query, engine)
 df_enc.head(1)
 
+# Load symptoms data with specific diagnosis code into dataframe df_sym
 query="SELECT * FROM symptoms where diagnosis_code_icd10 IN ('J45.51','J45.52','J45.901')"
 df_sym = pd.read_sql_query(query, engine)
 df_sym.head(1)
 
+# Join encounter data with diagnosis code
 df_encsym = pd.merge(df_enc , df_sym, on='encounter_id', how='inner')
 
+# Summarize data with number of unique encounter
 srs_hosp = df_encsym.groupby('osler_id_x').encounter_id.nunique()
 
-srs_hosp
-
+# Summarize data with number of unique encounter
 df_encsym2 = df_encsym.groupby('osler_id_x').encounter_id.nunique()
 
+# Reset index and assign patient id as column
 df_encsym2 = df_encsym2.to_frame().reset_index()
 
+# Rename patient id and number of hospitalization column
 df_encsym2 = df_encsym2.rename(columns={"osler_id_x":"osler_id","encounter_id":"hosp_num"})
 
-df_encsym2.head(1)
-
+# Merge data into main dataframe
 df = pd.merge(df , df_encsym2, on='osler_id', how='left')
 
-df.head(1)
-
+# Assign 0 to null value for number of hospitalization column
 df=df.fillna({'hosp_num':0})
 
+# Change data type to integer
 df = df.astype({'hosp_num':'int64'})
 
+# Create Mask for is_hosp field
 mask = df['hosp_num'] > 0
 
+# If patient is not hospitalized , field = False 0
 df['is_hosp'] = 0
 
+# If patient is hospitalized, field = True 0
 df.loc[mask, 'is_hosp'] = 1
-
-df.head(1)
 
 #Verify
 len(srs_hosp)==976 #True
@@ -310,9 +329,10 @@ def filtered_avg(series,quant):
     return series[(series>lower_quant)&(series<upper_quant)].mean()
   
 #Height
+
+# Load Vitals_weight data
 query="SELECT * FROM vitals_height"
 df_height = pd.read_sql_query(query, engine)
-
 df_height.height = pd.to_numeric(df_height.height)
 
 srs_height = df_height.groupby('osler_id')\
