@@ -108,7 +108,6 @@ df = pd.read_sql_query(query, engine)
 
 len(df)==60676
 
-
 # Step 2. Calculate age and age category
 
 #The data spans 3 years. Ages for the same patient will vary. 
@@ -328,39 +327,26 @@ df.head(1)
 #Weight
 query="SELECT * FROM vitals_weight"
 df_weight = pd.read_sql_query(query, engine)
-
 df_weight.weight = pd.to_numeric(df_weight.weight)
-
 srs_weight = df_weight.groupby('osler_id')\
 .weight.apply(filtered_avg, quant=10)
-
 df['weight']= srs_weight
-
 df.head(1)
-
 df.reset_index(inplace=True)
 
 #BMI
 df['bmi']=df['weight']/(df['height']**2)
-
 df.bmi.mean()
-
 df['bmi_cat']= pd.cut(df.bmi, [-np.inf,25,30,35,40,np.inf], \
                       labels=["1. not overweight or obese","2. overweight","3. class 1 obese","4. class 2 obese","5. class 3 obese"])
-
 (df.bmi_cat=='2. overweight').sum()
 
 #Verify
 round(df.height.max(),2)==2.08 #True
-
 round(df.weight.median(),2)==74.32 #True
-
 round(df.height.median(),2)==1.58 #True
-
 round(df.weight.mean(),2)==73.27 #True
-
 round(df.bmi.mean(),2)==25.54 #True
-
 (df.bmi_cat=='2. overweight').sum()==2638 #True
 
 # Step 7: Co-morbidities 
@@ -395,18 +381,14 @@ srs_prob=df_prob.groupby('osler_id')\
 .diagnosis_code_icd10.apply(get_dx_list)
 
 df_prob = srs_prob.to_frame().reset_index()
-
 df_prob = df_prob.rename(columns={"diagnosis_code_icd10":"elix"})
-
 df_prob.elix.explode()
-
 set(df_prob.elix.explode())
 
 for elix_name in set(df_prob.elix.explode()):
     df_prob[elix_name]=False
     
 df_prob=df_prob.loc[:,'osler_id':'elix']
-
 df_prob.head(1)
 
 df = pd.merge(df , df_prob, on='osler_id', how='left')
