@@ -341,7 +341,6 @@ df.head(1)
 df.reset_index(inplace=True)
 
 #BMI
-
 df['bmi']=df['weight']/(df['height']**2)
 
 df.bmi.mean()
