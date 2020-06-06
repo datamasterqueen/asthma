@@ -330,36 +330,49 @@ def filtered_avg(series,quant):
   
 #Height
 
-# Load Vitals_weight data
+# Load Vitals_height data into dataframe
 query="SELECT * FROM vitals_height"
 df_height = pd.read_sql_query(query, engine)
+
+# Change data type to numeric
 df_height.height = pd.to_numeric(df_height.height)
 
+# Calculate average height for each patient id
 srs_height = df_height.groupby('osler_id')\
 .height.apply(filtered_avg, quant=5)
 
+# Reset dataframe
 df.set_index('osler_id', inplace=True)
 
+# Merge height column and switch to meter
 df['height']= srs_height*0.0254
 
-df.head(1)
-
 #Weight
+# Load Vitals_weight data into dataframe
 query="SELECT * FROM vitals_weight"
 df_weight = pd.read_sql_query(query, engine)
+
+# Change data type to numeric
 df_weight.weight = pd.to_numeric(df_weight.weight)
+
+# Calculate average weight for each patient id
 srs_weight = df_weight.groupby('osler_id')\
 .weight.apply(filtered_avg, quant=10)
+
+# Merge weight column 
 df['weight']= srs_weight
-df.head(1)
+
+# Reset index and change patient id as column
 df.reset_index(inplace=True)
 
 #BMI
+# Calculate bmi for each patient
 df['bmi']=df['weight']/(df['height']**2)
-df.bmi.mean()
+
+# Categorize each bmi into different bins
 df['bmi_cat']= pd.cut(df.bmi, [-np.inf,25,30,35,40,np.inf], \
                       labels=["1. not overweight or obese","2. overweight","3. class 1 obese","4. class 2 obese","5. class 3 obese"])
-(df.bmi_cat=='2. overweight').sum()
+
 
 #Verify
 round(df.height.max(),2)==2.08 #True
@@ -386,10 +399,12 @@ import json
 from hcuppy.elixhauser import ElixhauserEngine
 ee=ElixhauserEngine()
 
+# Load problem list data into dataframe
 query = "select * from problemlist"
 df_prob=pd.read_sql_query(query, engine)
 df_prob=df_prob[df_prob.osler_id.isin(df.osler_id)]
 
+# Function that uses diagnosis code to find the comorbidities
 def get_dx_list(dx_series):
     output=[]
     results=ee.get_elixhauser(dx_series.tolist())
@@ -397,12 +412,20 @@ def get_dx_list(dx_series):
         output=results['cmrbdt_lst']
     return output
 
+# Use diagnosis code of each patient to find the list of comorbidity for each patient
 srs_prob=df_prob.groupby('osler_id')\
 .diagnosis_code_icd10.apply(get_dx_list)
 
+# Reset index
 df_prob = srs_prob.to_frame().reset_index()
+
+# Rename column to elix
 df_prob = df_prob.rename(columns={"diagnosis_code_icd10":"elix"})
+
+# 
 df_prob.elix.explode()
+
+# Convert List to set
 set(df_prob.elix.explode())
 
 for elix_name in set(df_prob.elix.explode()):
