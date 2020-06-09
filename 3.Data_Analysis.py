@@ -422,28 +422,16 @@ df_prob = srs_prob.to_frame().reset_index()
 # Rename column to elix
 df_prob = df_prob.rename(columns={"diagnosis_code_icd10":"elix"})
 
-# 
-df_prob.elix.explode()
-
-# Convert List to set
-set(df_prob.elix.explode())
-
-for elix_name in set(df_prob.elix.explode()):
-    df_prob[elix_name]=False
-    
-df_prob=df_prob.loc[:,'osler_id':'elix']
-df_prob.head(1)
-
+# Merge comorbidity with patient database
 df = pd.merge(df , df_prob, on='osler_id', how='left')
 
-for elix_name in set(df.elix.explode()):
-    if elix_name=='NaN':
-        df[elix_name.str.lower]=False
- 
+
+# Explode co-morbidity to column name  
 for elix_name in set(df.elix.explode()):
     if str(elix_name)!='nan':
         df["el_{}".format(elix_name.lower())]=False
         
+# loop through each row and assign co-morbidity status to each column if it is true
 from datetime import datetime
 stime=datetime.now()
 
@@ -472,5 +460,16 @@ df[df.columns[df.columns.str.contains('el_')]].sum().sum()==130758 #True
 #| emphysema | J43-J43.9 |
 #| acute_bronchitis |J20 -J20.9 |
 #| cystic_fibrosis |E84 - E84.9 |
+
+query = "select * from problemlist"
+df_prob2=pd.read_sql_query(query, engine)
+df_prob2=df_prob2[df_prob2.osler_id.isin(df.osler_id)]
+
+chronic_bronchitis = df_prob2.diagnosis_code_icd10.str.contains(r'J41.[0-8]')
+sinusitis = df_prob2.diagnosis_code_icd10.str.contains(r'J32.[0-9]')
+copd = df_prob2.diagnosis_code_icd10.str.contains(r'J44.[1-9]')
+emphysema = df_prob2.diagnosis_code_icd10.str.contains(r'J43|J43.[1-9]')
+acute_bronchitis = df_prob2.diagnosis_code_icd10.str.contains(r'J20[.0-9]|J20')
+cystic_fibrosis = df_prob2.diagnosis_code_icd10.str.contains(r'E84.[0-9]|E84')
 
 
